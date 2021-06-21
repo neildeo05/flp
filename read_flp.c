@@ -40,7 +40,7 @@ int kill(FLP* a) {
   a->width = 0;
   a->height = 0;
   a->frames = 0;
-  printf("Killing...");
+  printf("Killing...\n");
   free(a->data);
   return 1;
 }
@@ -61,8 +61,8 @@ void load_jpgs(char* path, FLP* flp, int frame_count, int frame_num) {
 int main() {
   FLP tmp = new();
   load_jpgs("foo.jpg", &tmp, 1, 0);
-  for (int i = 0; i < tmp.width * tmp.height * tmp.channels * tmp.frames; i+=3) {
-    printf("%x %x %x\n", *(tmp.data+i), *(tmp.data+i+1), *(tmp.data+i+2));
-  }
   kill(&tmp);
+
+
+
 }
