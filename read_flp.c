@@ -22,12 +22,17 @@ typedef struct {
   uint32_t height;
   uint32_t frames;
   uint32_t channels;
+  uint64_t total_size;
   uint8_t* data;
 } FLP;
 
+FLP new() {
+  FLP ret = {0};
+  return ret;
+}
 FLP new_FLP (uint32_t w, uint32_t h, uint32_t f, uint32_t c) {
-  FLP ret = (FLP) {.width = w, .height = h, .frames = f, .channels=c};
-  ret.data = malloc(sizeof(uint8_t) * ret.width * (ret.height * ret.frames) * ret.channels);
+  FLP ret = (FLP) {.width = w, .height = h, .frames = f, .channels=c, .total_size = w * h * f * c};
+  ret.data = malloc(sizeof(uint8_t) * ret.total_size);
   return ret;
 }
 
@@ -40,22 +45,24 @@ int kill(FLP* a) {
   return 1;
 }
 
-//FIXME: Missing one pixel from the loop
-FLP load(char* path) {
+void load_jpgs(char* path, FLP* flp, int frame_count, int frame_num) {
   int w, h, c;
   uint8_t* jpg = stbi_load(path, &w, &h, &c, 3);
-  FLP ret = new_FLP(w, h, 1, c);
-  for (int i = 0; i < (w * h * c); i+=3) {
-    *(ret.data+i) = jpg[i];
-    *(ret.data+i+1) = jpg[i+1];
-    *(ret.data+i+2) = jpg[i+2];
-  }
+  flp->width = w;
+  flp->height = h;
+  flp->channels = c;
+  flp->frames = frame_count;
+  flp->total_size = w * h * c * frame_count;
+  flp->data = malloc(sizeof(uint8_t) * flp->total_size);
+  memcpy(flp->data + (flp->total_size * frame_num), jpg, (w * h * c)); 
   stbi_image_free(jpg);
-  return ret;
 }
 
 int main() {
-  FLP tmp = load("foo.jpg");
-  printf("%x\n", *(tmp.data+7155));
+  FLP tmp = new();
+  load_jpgs("foo.jpg", &tmp, 1, 0);
+  for (int i = 0; i < tmp.width * tmp.height * tmp.channels * tmp.frames; i+=3) {
+    printf("%x %x %x\n", *(tmp.data+i), *(tmp.data+i+1), *(tmp.data+i+2));
+  }
   kill(&tmp);
 }
