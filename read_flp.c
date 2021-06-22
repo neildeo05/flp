@@ -95,11 +95,15 @@ int main(int argc, char** argv) {
 
       load_jpg_into_flp_frame(&tmp, jpg, 0, w, h, c);
       load_jpg_into_flp_frame(&tmp, jpg, 1, w, h, c);
-      stbi_write_jpg("gray.jpg", w, h, 1, tmp.data , 100);
+      int half = tmp.total_size / tmp.frames;
+      stbi_write_jpg("gray.jpg", w, h, 3, tmp.data+half, 100);
       DISP_FLP(tmp.data, tmp.total_size, tmp.frames);
+      for(int i = 0; i < tmp.total_size / tmp.frames; i+=3) {
+        printf("%d      %x %x %x\n", i, *(tmp.data+half+i), *(tmp.data + half + i + 1), *(tmp.data + half + i + 2)); 
+      }
+
 
       stbi_image_free(jpg);
-      printf("%d\n", tmp.total_size);
       kill(&tmp);
     }
     else {
