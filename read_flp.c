@@ -17,12 +17,23 @@
  * 00 FF 00 (Third/Third Frame)
  */
 
+#define USAGE() \
+    fprintf(stderr, "Usage: read [options]\n"); \
+    fprintf(stderr, "-s [filename]           load jpg file into FLP\n");
+#define DISP_FLP(flp, size, fc) \
+  for(int i = 0; i < size/fc; i+=3) {\
+    printf("%d         %x %x %x\n", i, *(flp + i), *(flp + i + 1), *(flp + i + 2));\
+  }\
+  printf("=================================\n");\
+  for(int i = (size / fc) + 1; i < size; i+=3) {\
+    printf("%d         %x %x %x\n", i, *(flp + i), *(flp + i + 1), *(flp + i + 2));\
+  }
 typedef struct {
   uint32_t width;
   uint32_t height;
   uint32_t frames;
   uint32_t channels;
-  uint64_t total_size;
+  uint32_t total_size;
   uint8_t* data;
 } FLP;
 
@@ -45,24 +56,71 @@ int kill(FLP* a) {
   return 1;
 }
 
-void load_jpgs(char* path, FLP* flp, int frame_count, int frame_num) {
-  int w, h, c;
-  uint8_t* jpg = stbi_load(path, &w, &h, &c, 3);
+void create_flp_from_jpg(FLP* flp, int w, int h, int c, int frame_count) {
   flp->width = w;
   flp->height = h;
   flp->channels = c;
   flp->frames = frame_count;
   flp->total_size = w * h * c * frame_count;
   flp->data = malloc(sizeof(uint8_t) * flp->total_size);
-  memcpy(flp->data + (flp->total_size * frame_num), jpg, (w * h * c)); 
-  stbi_image_free(jpg);
 }
 
-int main() {
-  FLP tmp = new();
-  load_jpgs("foo.jpg", &tmp, 1, 0);
-  kill(&tmp);
-
-
-
+void load_jpg_into_flp_frame(FLP* flp, uint8_t* jpg, int frame_num, int w, int h, int c) {
+  memcpy(flp->data + (((flp->total_size/flp->frames) * frame_num)), jpg, (w * h * c)); 
 }
+
+char* next_arg(int* argc, char*** argv) {
+  if(argc <= 0) {
+    fprintf(stderr, "No arguments provided\n");
+    exit(1);
+  }
+  else {
+    *argc -= 1;
+    char* arg = **argv;
+    *argv += 1;
+    return arg;
+  }
+}
+
+int main(int argc, char** argv) {
+  if(argc >= 2) {
+    if (strcmp(*(argv+1), "-s") == 0) {
+      argc -= 2;
+      argv += 2;
+      int num_args = argc;
+      FLP tmp = new();
+      int w, h, c;
+      uint8_t* jpg = stbi_load(next_arg(&argc, &argv), &w, &h, &c, 3);
+      create_flp_from_jpg(&tmp, w, h, c, 2); //ONLY CALL 1 time
+
+      load_jpg_into_flp_frame(&tmp, jpg, 0, w, h, c);
+      load_jpg_into_flp_frame(&tmp, jpg, 1, w, h, c);
+      stbi_write_jpg("gray.jpg", w, h, 1, tmp.data , 100);
+      DISP_FLP(tmp.data, tmp.total_size, tmp.frames);
+
+      stbi_image_free(jpg);
+      printf("%d\n", tmp.total_size);
+      kill(&tmp);
+    }
+    else {
+      fprintf(stderr, "ERROR: Unkown token '%s''\n", *(argv+1));
+      USAGE();
+      exit(1);
+    }
+  }
+  else {
+    fprintf(stderr, "Expected source file\n");
+    USAGE();
+    exit(1);
+  }
+}
+
+
+
+
+
+      /*while(argc > 0) {*/
+        /*int current_arg = num_args - argc;*/
+        /*printf("NEXT ARG:%s\nNUM ARGS:%d\nCURRENT ARG:%d\n", next_arg(&argc, &argv), num_args, current_arg);*/
+        /*load_jpgs(next_arg(&argc, &argv), num_args, num_args - argc);*/
+      /*}*/
