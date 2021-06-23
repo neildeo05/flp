@@ -7,19 +7,12 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-/* Sample Data:
- * w = 1; h = 3; f = 2
- * FF 00 FF (First/First Frame) 
- * FF 00 FF (Second/First Frame)
- * FF 00 FF (Third/First Frame)
- * 00 FF 00 (First/Second Frame)
- * 00 FF 00 (Second/Second Frame)
- * 00 FF 00 (Third/Third Frame)
- */
+#define USAGE(stream) \
+    fprintf(stream, "Usage: read [options]\n"); \
+    fprintf(stream, "-s [filename]           load jpg file into FLP\n"); \
+    fprintf(stream, "-h                      print out this help message to stdout\n");
 
-#define USAGE() \
-    fprintf(stderr, "Usage: read [options]\n"); \
-    fprintf(stderr, "-s [filename]           load jpg file into FLP\n");
+
 #define DISP_FLP(flp, size, fc) \
   for(int i = 0; i < size/fc; i+=3) {\
     printf("%d         %x %x %x\n", i, *(flp + i), *(flp + i + 1), *(flp + i + 2));\
@@ -28,6 +21,8 @@
   for(int i = (size / fc) + 1; i < size; i+=3) {\
     printf("%d         %x %x %x\n", i, *(flp + i), *(flp + i + 1), *(flp + i + 2));\
   }
+
+
 typedef struct {
   uint32_t width;
   uint32_t height;
@@ -56,6 +51,7 @@ int kill(FLP* a) {
   return 1;
 }
 
+//FIXME: This is a duplicate function of new_FLP - refactoring necessary
 void create_flp_from_jpg(FLP* flp, int w, int h, int c, int frame_count) {
   flp->width = w;
   flp->height = h;
@@ -65,7 +61,7 @@ void create_flp_from_jpg(FLP* flp, int w, int h, int c, int frame_count) {
   flp->data = malloc(sizeof(uint8_t) * flp->total_size);
 }
 
-void load_jpg_into_flp_frame(FLP* flp, uint8_t* jpg, int frame_num, int w, int h, int c) {
+void load_jpg_into_frame(FLP* flp, uint8_t* jpg, int frame_num, int w, int h, int c) {
   memcpy(flp->data + (((flp->total_size/flp->frames) * frame_num)), jpg, (w * h * c)); 
 }
 
@@ -90,41 +86,46 @@ int main(int argc, char** argv) {
       int num_args = argc;
       FLP tmp = new();
       int w, h, c;
+      //Event loop
       uint8_t* jpg = stbi_load(next_arg(&argc, &argv), &w, &h, &c, 3);
-      create_flp_from_jpg(&tmp, w, h, c, 2); //ONLY CALL 1 time
-
-      load_jpg_into_flp_frame(&tmp, jpg, 0, w, h, c);
-      load_jpg_into_flp_frame(&tmp, jpg, 1, w, h, c);
+      create_flp_from_jpg(&tmp, w, h, c, num_args); //ONLY CALL 1 time
+      load_jpg_into_frame(&tmp, jpg, 0, w, h, c);
+      stbi_image_free(jpg);
+      int counter = 1;
+      while(argc > 0) {
+        if (counter == 10) {
+          break;
+        }
+        jpg = stbi_load(next_arg(&argc, &argv), &w, &h, &c, 3);
+        load_jpg_into_frame(&tmp, jpg, counter, w, h, c);
+        stbi_image_free(jpg);
+        counter++;
+      }
+      char buf[13];
       int half = tmp.total_size / tmp.frames;
-      stbi_write_jpg("gray.jpg", w, h, 3, tmp.data+half, 100);
-      DISP_FLP(tmp.data, tmp.total_size, tmp.frames);
-      for(int i = 0; i < tmp.total_size / tmp.frames; i+=3) {
-        printf("%d      %x %x %x\n", i, *(tmp.data+half+i), *(tmp.data + half + i + 1), *(tmp.data + half + i + 2)); 
+      for (int i = 1; i <= num_args; i++) {
+        printf("%d\n", half * (i-1));
+        snprintf(buf, 13, "frame%03d.jpg", i);
+        stbi_write_jpg(buf, w, h, 3, tmp.data+(half*(i-1)), 100);
       }
 
-
-      stbi_image_free(jpg);
       kill(&tmp);
+    }
+    else if (strcmp(*(argv+1), "-h") == 0) {
+      USAGE(stdout);
+      exit(0);
     }
     else {
       fprintf(stderr, "ERROR: Unkown token '%s''\n", *(argv+1));
-      USAGE();
+      USAGE(stderr);
       exit(1);
     }
   }
   else {
     fprintf(stderr, "Expected source file\n");
-    USAGE();
+    USAGE(stderr);
     exit(1);
   }
+  return 0;
 }
 
-
-
-
-
-      /*while(argc > 0) {*/
-        /*int current_arg = num_args - argc;*/
-        /*printf("NEXT ARG:%s\nNUM ARGS:%d\nCURRENT ARG:%d\n", next_arg(&argc, &argv), num_args, current_arg);*/
-        /*load_jpgs(next_arg(&argc, &argv), num_args, num_args - argc);*/
-      /*}*/
