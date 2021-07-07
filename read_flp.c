@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <assert.h>
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <stb_image_write.h>
 
 #define USAGE(stream) \
     fprintf(stream, "Usage: read [options]\n"); \
@@ -77,6 +77,20 @@ char* next_arg(int* argc, char*** argv) {
     return arg;
   }
 }
+void compress(FLP flp) {
+  (void) flp;
+  assert("UNIMPLEMENTED");
+}
+
+void write_to_files(FLP *flp, int num_args, int w, int h) {
+  char buf[13];
+  int half = flp->total_size / flp->frames;
+  for (int i = 1; i <= num_args; i++) {
+    printf("%d\n", half * (i-1));
+    snprintf(buf, 13, "flp%03d.jpg", i);
+    stbi_write_jpg(buf, w, h, 3, flp->data+(half*(i-1)), 100);
+  }
+}
 
 int main(int argc, char** argv) {
   if(argc >= 2) {
@@ -86,7 +100,7 @@ int main(int argc, char** argv) {
       int num_args = argc;
       FLP tmp = new();
       int w, h, c;
-      //Event loop
+      //EVENT LOOP
       uint8_t* jpg = stbi_load(next_arg(&argc, &argv), &w, &h, &c, 3);
       create_flp_from_jpg(&tmp, w, h, c, num_args); //ONLY CALL 1 time
       load_jpg_into_frame(&tmp, jpg, 0, w, h, c);
@@ -101,13 +115,8 @@ int main(int argc, char** argv) {
         stbi_image_free(jpg);
         counter++;
       }
-      char buf[13];
-      int half = tmp.total_size / tmp.frames;
-      for (int i = 1; i <= num_args; i++) {
-        printf("%d\n", half * (i-1));
-        snprintf(buf, 13, "frame%03d.jpg", i);
-        stbi_write_jpg(buf, w, h, 3, tmp.data+(half*(i-1)), 100);
-      }
+      //END OF EVENT LOOP
+      write_to_files(&tmp, num_args, w, h);
 
       kill(&tmp);
     }
